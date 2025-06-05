@@ -105,6 +105,7 @@ support_locales = [
     "fr-FR",
     "vi-VN",
     "th-TH",
+    "fa-IR",  # Persian
 ]
 
 
@@ -191,8 +192,8 @@ def init_log():
 
 init_log()
 
-locales = utils.load_locales(i18n_dir)
-
+# Remove duplicate locale loading
+# locales = utils.load_locales(i18n_dir)  # This line should be removed
 
 def tr(key):
     loc = locales.get(st.session_state["ui_language"], {})
@@ -485,7 +486,8 @@ with left_panel:
             (tr("Auto Detect"), ""),
         ]
         for code in support_locales:
-            video_languages.append((code, code))
+            lang_name = locales.get(code, {}).get("Language", code)
+            video_languages.append((lang_name, code))
 
         selected_index = st.selectbox(
             tr("Script Language"),
@@ -874,6 +876,20 @@ with right_panel:
             format_func=lambda x: subtitle_positions[x][0],
         )
         params.subtitle_position = subtitle_positions[selected_index][1]
+
+        # Add text alignment options
+        text_alignments = [
+            (tr("Left"), "left"),
+            (tr("Center"), "center"),
+            (tr("Right"), "right"),
+        ]
+        selected_alignment = st.selectbox(
+            tr("Text Alignment"),
+            index=1,
+            options=range(len(text_alignments)),
+            format_func=lambda x: text_alignments[x][0],
+        )
+        params.text_alignment = text_alignments[selected_alignment][1]
 
         if params.subtitle_position == "custom":
             custom_position = st.text_input(

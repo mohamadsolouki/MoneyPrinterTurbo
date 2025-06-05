@@ -309,6 +309,15 @@ Generate a script for a video, depending on the subject of the video.
 6. do not include "voiceover", "narrator" or similar indicators of what should be spoken at the beginning of each paragraph or line.
 7. you must not mention the prompt, or anything about the script itself. also, never talk about the amount of paragraphs or lines. just write the script.
 8. respond in the same language as the video subject.
+9. use informal, conversational language that people use in their daily lives - avoid formal or academic tone.
+10. make the content engaging and interesting by:
+    - using natural expressions and idioms common in everyday speech
+    - incorporating rhetorical questions to maintain viewer interest
+    - using relatable examples and scenarios
+    - keeping sentences concise and dynamic
+    - adding personality and warmth to the tone
+11. ensure the language feels authentic to native speakers of the target language
+12. maintain a friendly and approachable tone throughout the script
 
 # Initialization:
 - video subject: {video_subject}

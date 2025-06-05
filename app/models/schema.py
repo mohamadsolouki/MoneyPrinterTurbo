@@ -97,6 +97,7 @@ class VideoParams(BaseModel):
     font_name: Optional[str] = "STHeitiMedium.ttc"
     text_fore_color: Optional[str] = "#FFFFFF"
     text_background_color: Union[bool, str] = True
+    text_alignment: Optional[str] = "center"  # left, center, right
 
     font_size: int = 60
     stroke_color: Optional[str] = "#000000"

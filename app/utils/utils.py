@@ -221,8 +221,19 @@ def load_locales(i18n_dir):
         for file in files:
             if file.endswith(".json"):
                 lang = file.split(".")[0]
+                # Map language codes to their full versions
+                lang_map = {
+                    "fa": "fa-IR",
+                    "zh": "zh-CN",
+                    "en": "en-US",
+                    "de": "de-DE",
+                    "fr": "fr-FR",
+                    "vi": "vi-VN",
+                    "th": "th-TH"
+                }
+                lang_code = lang_map.get(lang, lang)
                 with open(os.path.join(root, file), "r", encoding="utf-8") as f:
-                    _locales[lang] = json.loads(f.read())
+                    _locales[lang_code] = json.loads(f.read())
     return _locales
 
 
