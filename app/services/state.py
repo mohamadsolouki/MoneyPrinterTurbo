@@ -1,5 +1,8 @@
 import ast
 from abc import ABC, abstractmethod
+from datetime import datetime
+from typing import List, Dict
+import threading
 
 from app.config import config
 from app.models import const
@@ -24,6 +27,7 @@ class BaseState(ABC):
 class MemoryState(BaseState):
     def __init__(self):
         self._tasks = {}
+        self.lock = threading.Lock()
 
     def get_all_tasks(self, page: int, page_size: int):
         start = (page - 1) * page_size
@@ -43,19 +47,52 @@ class MemoryState(BaseState):
         if progress > 100:
             progress = 100
 
-        self._tasks[task_id] = {
-            "task_id": task_id,
-            "state": state,
-            "progress": progress,
-            **kwargs,
-        }
+        try:
+            with self.lock:
+                if task_id not in self._tasks:
+                    self._tasks[task_id] = {
+                        "task_id": task_id,
+                        "state": state,
+                        "progress": progress,
+                        "error": None,
+                        "created_at": datetime.now().isoformat(),
+                        "updated_at": datetime.now().isoformat()
+                    }
+                
+                # Update task fields
+                for key, value in kwargs.items():
+                    self._tasks[task_id][key] = value
+                
+                # Always update the timestamp
+                self._tasks[task_id]["updated_at"] = datetime.now().isoformat()
+                
+                # Log state changes
+                if "state" in kwargs:
+                    logger.info(f"Task {task_id} state changed to {kwargs['state']}")
+                if "error" in kwargs and kwargs["error"]:
+                    logger.error(f"Task {task_id} error: {kwargs['error']}")
+                    
+        except Exception as e:
+            logger.error(f"Error updating task state: {str(e)}")
+            raise
 
     def get_task(self, task_id: str):
-        return self._tasks.get(task_id, None)
+        try:
+            with self.lock:
+                return self._tasks.get(task_id, None)
+        except Exception as e:
+            logger.error(f"Error getting task state: {str(e)}")
+            return None
 
     def delete_task(self, task_id: str):
-        if task_id in self._tasks:
-            del self._tasks[task_id]
+        try:
+            with self.lock:
+                if task_id in self._tasks:
+                    del self._tasks[task_id]
+                    logger.info(f"Task {task_id} deleted")
+        except Exception as e:
+            logger.error(f"Error deleting task: {str(e)}")
+            raise
 
 
 # Redis state management
@@ -156,3 +193,90 @@ state = (
     if _enable_redis
     else MemoryState()
 )
+
+class StateManager:
+    def __init__(self):
+        self.tasks = {}
+        self.lock = threading.Lock()
+        
+    def update_task(self, task_id: str, **kwargs):
+        """Update task state with thread safety."""
+        try:
+            with self.lock:
+                if task_id not in self.tasks:
+                    self.tasks[task_id] = {
+                        "id": task_id,
+                        "state": const.TASK_STATE_PENDING,
+                        "progress": 0,
+                        "error": None,
+                        "created_at": datetime.now().isoformat(),
+                        "updated_at": datetime.now().isoformat()
+                    }
+                
+                # Update task fields
+                for key, value in kwargs.items():
+                    self.tasks[task_id][key] = value
+                
+                # Always update the timestamp
+                self.tasks[task_id]["updated_at"] = datetime.now().isoformat()
+                
+                # Log state changes
+                if "state" in kwargs:
+                    logger.info(f"Task {task_id} state changed to {kwargs['state']}")
+                if "error" in kwargs and kwargs["error"]:
+                    logger.error(f"Task {task_id} error: {kwargs['error']}")
+                    
+        except Exception as e:
+            logger.error(f"Error updating task state: {str(e)}")
+            raise
+            
+    def get_task(self, task_id: str) -> Dict:
+        """Get task state with thread safety."""
+        try:
+            with self.lock:
+                return self.tasks.get(task_id, None)
+        except Exception as e:
+            logger.error(f"Error getting task state: {str(e)}")
+            return None
+            
+    def delete_task(self, task_id: str):
+        """Delete task with thread safety."""
+        try:
+            with self.lock:
+                if task_id in self.tasks:
+                    del self.tasks[task_id]
+                    logger.info(f"Task {task_id} deleted")
+        except Exception as e:
+            logger.error(f"Error deleting task: {str(e)}")
+            raise
+            
+    def get_all_tasks(self) -> List[Dict]:
+        """Get all tasks with thread safety."""
+        try:
+            with self.lock:
+                return list(self.tasks.values())
+        except Exception as e:
+            logger.error(f"Error getting all tasks: {str(e)}")
+            return []
+            
+    def cleanup_old_tasks(self, max_age_hours: int = 24):
+        """Clean up tasks older than max_age_hours."""
+        try:
+            with self.lock:
+                now = datetime.now()
+                tasks_to_delete = []
+                
+                for task_id, task in self.tasks.items():
+                    created_at = datetime.fromisoformat(task["created_at"])
+                    age = now - created_at
+                    
+                    if age.total_seconds() > max_age_hours * 3600:
+                        tasks_to_delete.append(task_id)
+                
+                for task_id in tasks_to_delete:
+                    del self.tasks[task_id]
+                    logger.info(f"Cleaned up old task: {task_id}")
+                    
+        except Exception as e:
+            logger.error(f"Error cleaning up old tasks: {str(e)}")
+            raise
